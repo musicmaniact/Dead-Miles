@@ -30,9 +30,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p game
-          gh release download v5.9.5 \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern 'DeadMiles_595_Last_Departure_Android.zip'
+          gh release download \
+  --repo "$GITHUB_REPOSITORY" \
+  --pattern 'DeadMiles_595_Last_Departure_Android.zip'
           unzip -q DeadMiles_595_Last_Departure_Android.zip -d game
           test -f game/project.godot
 
