@@ -1,0 +1,76 @@
+name: Dead Miles Web Build - Direct Files
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Get game files
+        uses: actions/checkout@v4
+
+      - name: Install Godot and Web export templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+
+      - name: Reassemble verified Godot game
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s DeadMiles_595.part1
+          test -s DeadMiles_595.part2
+          cat DeadMiles_595.part1 DeadMiles_595.part2 > deadmiles.zip
+          echo '089ce3061b52417c2b62868da62625ea3490662f99a24e19ad4526bbfa4a15c0  deadmiles.zip' | sha256sum -c -
+          mkdir -p game
+          unzip -q deadmiles.zip -d game
+          test -s game/project.godot
+          echo 'Source verified: complete Dead Miles 5.9.5 project'
+
+      - name: Export playable browser game
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > game/export_presets.cfg <<'PRESET'
+          [preset.0]
+          name="Web"
+          platform="Web"
+          runnable=true
+          export_filter="all_resources"
+          include_filter=""
+          exclude_filter=""
+
+          [preset.0.options]
+          variant/thread_support=false
+          PRESET
+          godot --headless --path game --editor --import --quit
+          mkdir -p site
+          godot --headless --path game --export-release Web "$GITHUB_WORKSPACE/site/index.html"
+          test -s site/index.html
+          test -s site/index.wasm
+          test -s site/index.pck
+          touch site/.nojekyll
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload playable website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Publish playable website
+        id: deployment
+        uses: actions/deploy-pages@v4
